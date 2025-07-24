@@ -1,0 +1,1 @@
+# k8s-pod-design-with-sidecar-ambassador-patterns
