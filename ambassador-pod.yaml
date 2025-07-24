@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ambassador-pod
+  labels:
+    app: app-with-ambassador
+spec:
+  containers:
+  - name: main-app
+    image: busybox:1.35
+    command: ["/bin/sh"]
+    args:
+    - -c
+    - |
+      while true; do
+        echo "$(date): Main app talking to DB via ambassador..."
+        nc -z localhost 3306 && echo "Success" || echo "Failed"
+        sleep 15
+      done
+    volumeMounts:
+    - name: shared-config
+      mountPath: /shared-config
+  - name: db-ambassador
+    image: alpine/socat
+    command: ["/bin/sh"]
+    args:
+    - -c
+    - |
+      echo "Starting proxy..."
+      socat TCP-LISTEN:3306,fork TCP:mysql-service.default.svc.cluster.local:3306
+    ports:
+    - containerPort: 3306
+  - name: config-provider
+    image: busybox:1.35
+    command: ["/bin/sh"]
+    args:
+    - -c
+    - |
+      echo "proxy_enabled=true" > /shared-config/app.conf
+      sleep infinity
+    volumeMounts:
+    - name: shared-config
+      mountPath: /shared-config
+  volumes:
+  - name: shared-config
+    emptyDir: {}
